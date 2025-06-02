@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Puzzle Challenge - Checkmate Trainer</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 10px;
+            overflow-x: hidden;
+        }
+
+        .game-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            text-align: center;
+            width: 100%;
+            max-width: 100%;
+            min-height: calc(100vh - 20px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 12px;
+            background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .challenge-info {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            padding: 12px;
+            border-radius: 8px;
+            color: white;
+            margin-bottom: 15px;
+            font-size: 1em;
+            font-weight: bold;
+        }
+
+        .game-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+            flex: 1;
+        }
+
+        .chess-board {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(5, 1fr);
+            gap: 0px;
+            width: min(calc(90vw - 30px), 350px);
+            height: min(calc(90vw - 30px), 350px);
+            margin: 0 auto;
+            box-sizing: border-box;
+        }
+
+        .cell {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            position: relative;
+            min-height: min(calc(18vw - 6px), 70px);
+            box-sizing: border-box;
+        }
+
+        .cell img {
+            width: min(calc(12vw - 6px), 45px);
+            height: min(calc(12vw - 6px), 45px);
+            object-fit: contain;
+            transition: transform 0.2s ease;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .cell:hover img {
+            transform: scale(1.05);
+        }
+
+        .cell:nth-child(odd) {
+            background: #f0d9b5;
+        }
+
+        .cell:nth-child(even) {
+            background: #b58863;
+        }
+
+        .cell:hover {
+            transform: scale(1.02);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+        }
+
+        .cell.selected {
+            background: #ffeb3b !important;
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(255, 235, 59, 0.8);
+        }
+
+        .cell.possible-move {
+            position: relative;
+            animation: pulse 1s infinite;
+        }
+
+        .cell.possible-move::before {
+            content: '';
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            right: 8px;
+            bottom: 8px;
+            background: #4caf50;
+            border-radius: 4px;
+            z-index: 1;
+        }
+
+        .cell.possible-move img {
+            position: relative;
+            z-index: 2;
+        }
+
+        .cell.best-move {
+            position: relative;
+            animation: glow 1s infinite;
+        }
+
+        .cell.best-move::before {
+            content: '';
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            right: 8px;
+            bottom: 8px;
+            background: #ff9800;
+            border-radius: 4px;
+            z-index: 1;
+        }
+
+        .cell.best-move img {
+            position: relative;
+            z-index: 2;
+        }
+
+        .cell.computer-move {
+            position: relative;
+            animation: computerPulse 1s infinite;
+        }
+
+        .cell.computer-move::before {
+            content: '';
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            right: 8px;
+            bottom: 8px;
+            background: #e91e63;
+            border-radius: 4px;
+            z-index: 1;
+        }
+
+        .cell.computer-move img {
+            position: relative;
+            z-index: 2;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        @keyframes glow {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+
+        @keyframes computerPulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+
+        .side-panel {
+            margin-top: 7%;
+            width: 100%;
+            max-width: min(90vw, 350px);
+            text-align: left;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            padding: 12px 8px;
+            font-size: 0.85em;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            touch-action: manipulation;
+        }
+
+        button:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .move-history {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .move-history h3 {
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 1em;
+        }
+
+        .move-entry {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 8px;
+            margin-bottom: 4px;
+            background: white;
+            border-radius: 4px;
+            border-left: 3px solid #ddd;
+            font-size: 0.85em;
+        }
+
+        .move-entry.excellent { border-left-color: #4CAF50; }
+        .move-entry.good { border-left-color: #FF9800; }
+        .move-entry.poor { border-left-color: #F44336; }
+
+        .move-score {
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 12px;
+            color: white;
+            font-size: 0.8em;
+        }
+
+        .score-10 { background: #4CAF50; }
+        .score-8 { background: #8BC34A; }
+        .score-6 { background: #FF9800; }
+        .score-4 { background: #FF5722; }
+        .score-2 { background: #F44336; }
+
+        .analysis-panel {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+
+        .analysis-panel h3 {
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 1em;
+        }
+
+        .analysis-text {
+            font-size: 0.85em;
+            line-height: 1.4;
+            color: #555;
+        }
+
+        .feedback {
+            min-height: 50px;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+
+        .feedback.excellent {
+            background: linear-gradient(45deg, #4caf50, #45a049);
+            color: white;
+        }
+
+        .feedback.good {
+            background: linear-gradient(45deg, #ff9800, #f57c00);
+            color: white;
+        }
+
+        .feedback.poor {
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+            color: white;
+        }
+
+        .feedback.neutral {
+            background: linear-gradient(45deg, #2196f3, #1976d2);
+            color: white;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 20px;
+            border-radius: 12px;
+            width: 95%;
+            max-width: 500px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        @media (max-width: 480px) {
+            .game-container {
+                padding: 10px;
+                border-radius: 10px;
+            }
+            
+            h1 {
+                font-size: 1.5em;
+                margin-bottom: 10px;
+            }
+            
+            .game-info {
+                font-size: 0.8em;
+                padding: 10px;
+            }
+            
+            .challenge-info {
+                font-size: 0.9em;
+                padding: 10px;
+            }
+            
+            .chess-board {
+                width: min(calc(95vw - 20px), 320px);
+                height: min(calc(95vw - 20px), 320px);
+                border-width: 2px;
+                gap: 0px;
+            }
+            
+            .cell img {
+                width: min(calc(15vw - 4px), 40px);
+                height: min(calc(15vw - 4px), 40px);
+            }
+            
+            button {
+                font-size: 0.8em;
+                padding: 10px 6px;
+            }
+            
+            .analysis-text {
+                font-size: 0.8em;
+            }
+            
+            .modal-content {
+                margin: 5% auto;
+                width: 98%;
+                padding: 15px;
+            }
+        }
+
+        /* Remove the old media query */
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>♔ Chess Puzzle Challenge</h1>
+        
+        <div class="challenge-info" id="challenge-info">
+            Challenge: Find checkmate! You are White.
+        </div>
+        
+        <div class="game-info">
+            <div>Score: <span id="score">0</span></div>
+            <div>Moves: <span id="total-moves">0</span></div>
+            <div>Status: <span id="game-status">Your Turn</span></div>
+        </div>
+
+        <div class="game-layout">
+            <div class="chess-board" id="board"></div>
+            
+            <div class="side-panel">
+                <div class="controls">
+                    <button onclick="newPuzzle()">🎲 New Puzzle</button>
+                    <button onclick="showHint()">💡 Show Hint</button>
+                    <button onclick="showAnalysis()">📊 Analysis</button>
+                    <button onclick="undoMove()">↩️ Undo Move</button>
+                </div>
+
+                <div class="move-history">
+                    <h3>Move History</h3>
+                    <div id="move-list"></div>
+                </div>
+
+                <div class="analysis-panel">
+                    <h3>Current Analysis</h3>
+                    <div class="analysis-text" id="analysis-text">
+                        Make your first move to begin the puzzle!
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="feedback" id="feedback"></div>
+    </div>
+
+    <!-- Analysis Modal -->
+    <div id="analysisModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Game Analysis</h2>
+            <div id="detailed-analysis"></div>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        let board = Array(25).fill(null);
+        let selectedPiece = null;
+        let currentPlayer = 'white';
+        let score = 0;
+        let moveHistory = [];
+        let gameActive = true;
+        let totalMoves = 0;
+        let puzzleSolution = [];
+        let computerThinking = false;
+
+        // Piece definitions
+        const pieces = {
+            white: {
+                king: 'chess-pieces/white-king.png',
+                queen: 'chess-pieces/white-queen.png',
+                rook: 'chess-pieces/white-elephant.png',
+                knight: 'chess-pieces/white-horse.png',
+                bishop: 'chess-pieces/white-bishop.png',
+                pawn: 'chess-pieces/white-soldier.png'
+            },
+            black: {
+                king: 'chess-pieces/black-king.png',
+                queen: 'chess-pieces/black-queen.png',
+                rook: 'chess-pieces/black-elephant.png',
+                knight: 'chess-pieces/black-horse.png',
+                bishop: 'chess-pieces/black-bishop.png',
+                pawn: 'chess-pieces/black-soldier.png'
+            }
+        };
+
+        const pieceValues = {
+            pawn: 1,
+            knight: 3,
+            bishop: 3,
+            rook: 5,
+            queen: 9,
+            king: 100
+        };
+
+        // Predefined puzzle positions
+        const puzzles = [
+            {
+                position: {
+                    20: {color: 'white', type: 'king'},
+                    22: {color: 'white', type: 'queen'},
+                    24: {color: 'white', type: 'rook'},
+                    2: {color: 'black', type: 'king'},
+                    7: {color: 'black', type: 'rook'},
+                    12: {color: 'black', type: 'pawn'}
+                },
+                solution: [
+                    {from: 22, to: 2, evaluation: 'Checkmate! The queen delivers mate.'}
+                ]
+            },
+            {
+                position: {
+                    21: {color: 'white', type: 'king'},
+                    23: {color: 'white', type: 'queen'},
+                    19: {color: 'white', type: 'rook'},
+                    1: {color: 'black', type: 'king'},
+                    6: {color: 'black', type: 'bishop'},
+                    11: {color: 'black', type: 'pawn'}
+                },
+                solution: [
+                    {from: 19, to: 1, evaluation: 'Rook delivers checkmate by controlling the back rank.'}
+                ]
+            },
+            {
+                position: {
+                    22: {color: 'white', type: 'king'},
+                    18: {color: 'white', type: 'queen'},
+                    24: {color: 'white', type: 'bishop'},
+                    2: {color: 'black', type: 'king'},
+                    7: {color: 'black', type: 'knight'},
+                    12: {color: 'black', type: 'pawn'},
+                    6: {color: 'black', type: 'rook'}
+                },
+                solution: [
+                    {from: 18, to: 8, evaluation: 'Queen moves to create threats'},
+                    {from: 8, to: 3, evaluation: 'Queen delivers mate on next move'}
+                ]
+            },
+            {
+                position: {
+                    23: {color: 'white', type: 'king'},
+                    17: {color: 'white', type: 'queen'},
+                    19: {color: 'white', type: 'rook'},
+                    24: {color: 'white', type: 'bishop'},
+                    1: {color: 'black', type: 'king'},
+                    6: {color: 'black', type: 'queen'},
+                    11: {color: 'black', type: 'knight'},
+                    16: {color: 'black', type: 'pawn'}
+                },
+                solution: [
+                    {from: 17, to: 1, evaluation: 'Brilliant queen sacrifice forces mate in one!'}
+                ]
+            }
+        ];
+
+        let currentPuzzle = null;
+
+        // Initialize the game
+        function initGame() {
+            createBoard();
+            newPuzzle();
+        }
+
+        function createBoard() {
+            const boardElement = document.getElementById('board');
+            boardElement.innerHTML = '';
+            
+            for (let i = 0; i < 25; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.index = i;
+                cell.addEventListener('click', () => handleCellClick(i));
+                boardElement.appendChild(cell);
+            }
+        }
+
+        function newPuzzle() {
+            currentPuzzle = puzzles[Math.floor(Math.random() * puzzles.length)];
+            
+            board = Array(25).fill(null);
+            Object.entries(currentPuzzle.position).forEach(([pos, piece]) => {
+                board[parseInt(pos)] = {
+                    color: piece.color,
+                    type: piece.type,
+                    image: pieces[piece.color][piece.type]
+                };
+            });
+            
+            selectedPiece = null;
+            currentPlayer = 'white';
+            gameActive = true;
+            totalMoves = 0;
+            moveHistory = [];
+            computerThinking = false;
+            score = 0;
+            
+            updateDisplay();
+            
+            // Check initial game state
+            if (isInCheck('white')) {
+                updateAnalysis('You start in check! You must get out of check immediately.');
+                showFeedback('⚠️ You are in check! You must get out of check.', 'neutral');
+            } else {
+                updateAnalysis('New puzzle loaded! Find the best move to start your checkmate sequence.');
+                showFeedback('New puzzle ready! Find the winning combination!', 'neutral');
+            }
+        }
+
+        function handleCellClick(index) {
+            if (!gameActive || computerThinking || currentPlayer !== 'white') return;
+
+            const cell = document.querySelector(`[data-index="${index}"]`);
+            const piece = board[index];
+
+            if (selectedPiece === null) {
+                if (piece && piece.color === currentPlayer) {
+                    selectedPiece = index;
+                    highlightPossibleMoves(index);
+                    updateDisplay();
+                }
+            } else {
+                if (selectedPiece === index) {
+                    selectedPiece = null;
+                    clearHighlights();
+                    updateDisplay();
+                } else if (isValidMove(selectedPiece, index)) {
+                    makeMove(selectedPiece, index);
+                } else {
+                    // Check if the player is in check and trying to make an invalid move
+                    const selectedPieceObj = board[selectedPiece];
+                    if (selectedPieceObj && isInCheck('white')) {
+                        // Check if the basic piece movement would be valid (ignoring check rules)
+                        if (isValidPieceMove(selectedPiece, index)) {
+                            showFeedback('❌ Invalid move! You are in check and must get out of check.', 'poor');
+                            updateAnalysis('You are in check! This move would leave your king in check. You must move your king to safety, block the attack, or capture the attacking piece.');
+                        } else {
+                            showFeedback('❌ Invalid move! That piece cannot move there.', 'poor');
+                        }
+                    } else if (selectedPieceObj && !isValidPieceMove(selectedPiece, index)) {
+                        showFeedback('❌ Invalid move! That piece cannot move there.', 'poor');
+                    } else {
+                        showFeedback('❌ Invalid move! This would put your king in check.', 'poor');
+                        updateAnalysis('This move would put your own king in check, which is not allowed in chess.');
+                    }
+                    
+                    selectedPiece = null;
+                    clearHighlights();
+                    updateDisplay();
+                }
+            }
+        }
+
+        function isValidMove(from, to) {
+            const piece = board[from];
+            if (!piece) return false;
+
+            const targetPiece = board[to];
+            if (targetPiece && targetPiece.color === piece.color) return false;
+
+            // Check basic piece movement rules
+            if (!isValidPieceMove(from, to)) return false;
+
+            // Simulate the move to check if it leaves the king in check
+            const originalPiece = board[to];
+            board[to] = board[from];
+            board[from] = null;
+
+            // Find the king of the moving piece's color after the move
+            let kingIndex;
+            if (piece.type === 'king') {
+                // If we're moving the king, the king position is 'to'
+                kingIndex = to;
+            } else {
+                // Otherwise find the king on the board
+                kingIndex = board.findIndex(p => 
+                    p && p.color === piece.color && p.type === 'king'
+                );
+            }
+
+            let isValid = true;
+            if (kingIndex !== -1) {
+                // Check if the king would be in check after this move
+                isValid = !isSquareUnderAttack(kingIndex, piece.color === 'white' ? 'black' : 'white');
+            }
+
+            // Restore the board
+            board[from] = board[to];
+            board[to] = originalPiece;
+
+            return isValid;
+        }
+
+        function isValidPieceMove(from, to) {
+            const piece = board[from];
+            const fromRow = Math.floor(from / 5);
+            const fromCol = from % 5;
+            const toRow = Math.floor(to / 5);
+            const toCol = to % 5;
+
+            const rowDiff = Math.abs(toRow - fromRow);
+            const colDiff = Math.abs(toCol - fromCol);
+
+            switch (piece.type) {
+                case 'pawn':
+                    if (piece.color === 'white') {
+                        if (board[to]) {
+                            return rowDiff === 1 && colDiff === 1 && toRow < fromRow;
+                        } else {
+                            return colDiff === 0 && rowDiff === 1 && toRow < fromRow;
+                        }
+                    } else {
+                        if (board[to]) {
+                            return rowDiff === 1 && colDiff === 1 && toRow > fromRow;
+                        } else {
+                            return colDiff === 0 && rowDiff === 1 && toRow > fromRow;
+                        }
+                    }
+                case 'rook':
+                    return (rowDiff === 0 || colDiff === 0) && !isPieceBlocking(from, to);
+                case 'bishop':
+                    return rowDiff === colDiff && !isPieceBlocking(from, to);
+                case 'queen':
+                    return (rowDiff === 0 || colDiff === 0 || rowDiff === colDiff) && !isPieceBlocking(from, to);
+                case 'knight':
+                    return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
+                case 'king':
+                    return rowDiff <= 1 && colDiff <= 1;
+                default:
+                    return false;
+            }
+        }
+
+        function isSquareUnderAttack(square, byColor) {
+            for (let i = 0; i < 25; i++) {
+                const piece = board[i];
+                if (piece && piece.color === byColor && isValidPieceMove(i, square)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function isPieceBlocking(from, to) {
+            const fromRow = Math.floor(from / 5);
+            const fromCol = from % 5;
+            const toRow = Math.floor(to / 5);
+            const toCol = to % 5;
+
+            const rowDir = toRow > fromRow ? 1 : toRow < fromRow ? -1 : 0;
+            const colDir = toCol > fromCol ? 1 : toCol < fromCol ? -1 : 0;
+
+            let currentRow = fromRow + rowDir;
+            let currentCol = fromCol + colDir;
+
+            while (currentRow !== toRow || currentCol !== toCol) {
+                const currentIndex = currentRow * 5 + currentCol;
+                if (board[currentIndex]) return true;
+                
+                currentRow += rowDir;
+                currentCol += colDir;
+            }
+
+            return false;
+        }
+
+        function makeMove(from, to) {
+            const piece = board[from];
+            const capturedPiece = board[to];
+            
+            // Increment total moves counter
+            totalMoves++;
+            
+            // Evaluate move quality
+            const moveQuality = evaluateMove(from, to);
+            const points = moveQuality.points;
+            
+            // Record move
+            const moveRecord = {
+                from: from,
+                to: to,
+                piece: piece.type,
+                captured: capturedPiece ? capturedPiece.type : null,
+                points: points,
+                quality: moveQuality.quality,
+                analysis: moveQuality.analysis
+            };
+            
+            moveHistory.push(moveRecord);
+            
+            // Make the move
+            board[to] = board[from];
+            board[from] = null;
+            
+            // Update game state
+            score += points;
+            selectedPiece = null;
+            clearHighlights();
+            
+            // Check for checkmate
+            if (isCheckmate('black')) {
+                gameActive = false;
+                const bonus = Math.max(50 - (totalMoves * 5), 10); // Bonus decreases with more moves
+                score += bonus;
+                showFeedback(`🎉 Hurray! You completed the game in ${totalMoves} moves! Bonus: +${bonus} points`, 'excellent');
+                updateAnalysis(`Congratulations! You found checkmate in ${totalMoves} moves. ${moveQuality.analysis}`);
+            } else {
+                showFeedback(`${moveQuality.feedback} (+${points} points)`, moveQuality.quality);
+                updateAnalysis(moveQuality.analysis);
+                
+                // Check if computer is in check after player's move
+                if (isInCheck('black')) {
+                    updateAnalysis(moveQuality.analysis + ' The computer is now in check!');
+                }
+                
+                // Computer response (if game continues)
+                setTimeout(() => {
+                    if (gameActive) makeComputerMove();
+                }, 1500);
+            }
+            
+            updateDisplay();
+            updateMoveHistory();
+        }
+
+        function evaluateMove(from, to) {
+            const piece = board[from];
+            const capturedPiece = board[to];
+            
+            // Check if this move is in the optimal solution
+            const solutionStep = Math.floor(totalMoves / 2); // Since computer also makes moves
+            const isOptimalMove = currentPuzzle.solution[solutionStep] && 
+                                currentPuzzle.solution[solutionStep].from === from && 
+                                currentPuzzle.solution[solutionStep].to === to;
+            
+            let points = 0;
+            let quality = 'poor';
+            let feedback = 'Suboptimal move';
+            let analysis = '';
+            
+            if (isOptimalMove) {
+                points = 10;
+                quality = 'excellent';
+                feedback = 'Perfect! Optimal move';
+                analysis = currentPuzzle.solution[solutionStep].evaluation;
+            } else {
+                // Evaluate based on tactics
+                if (capturedPiece) {
+                    points += pieceValues[capturedPiece.type];
+                }
+                
+                if (isCheckMove(from, to)) {
+                    points += 5;
+                    feedback = 'Good check!';
+                    analysis = 'You gave check, putting pressure on the opponent king.';
+                }
+                
+                if (points >= 8) {
+                    quality = 'good';
+                    feedback = 'Good tactical move';
+                } else if (points >= 5) {
+                    quality = 'good';
+                    feedback = 'Decent move';
+                } else {
+                    points = Math.max(2, points);
+                    analysis = 'This move doesn\'t contribute directly to the checkmate pattern. Look for more forcing moves like checks or captures.';
+                }
+            }
+            
+            return { points, quality, feedback, analysis };
+        }
+
+        function isCheckMove(from, to) {
+            // Simulate the move
+            const originalPiece = board[to];
+            board[to] = board[from];
+            board[from] = null;
+            
+            // Find enemy king
+            const enemyKing = board.findIndex(piece => 
+                piece && piece.color === 'black' && piece.type === 'king'
+            );
+            
+            // Check if any white piece attacks the king
+            const isInCheck = board.some((piece, index) => 
+                piece && piece.color === 'white' && isValidMove(index, enemyKing)
+            );
+            
+            // Restore board
+            board[from] = board[to];
+            board[to] = originalPiece;
+            
+            return isInCheck;
+        }
+
+        function isCheckmate(color) {
+            // Find the king
+            const kingIndex = board.findIndex(piece => 
+                piece && piece.color === color && piece.type === 'king'
+            );
+            
+            if (kingIndex === -1) return true; // No king = checkmate
+            
+            // Check if king is in check
+            const inCheck = isSquareUnderAttack(kingIndex, color === 'white' ? 'black' : 'white');
+            
+            if (!inCheck) return false; // Not in check = not checkmate
+            
+            // Check if any move can get out of check
+            for (let from = 0; from < 25; from++) {
+                const piece = board[from];
+                if (!piece || piece.color !== color) continue;
+                
+                for (let to = 0; to < 25; to++) {
+                    if (isValidMove(from, to)) {
+                        // If any valid move exists, it's not checkmate
+                        return false;
+                    }
+                }
+            }
+            
+            return true; // No valid moves = checkmate
+        }
+
+        function isInCheck(color) {
+            const kingIndex = board.findIndex(piece => 
+                piece && piece.color === color && piece.type === 'king'
+            );
+            
+            if (kingIndex === -1) return false;
+            
+            return isSquareUnderAttack(kingIndex, color === 'white' ? 'black' : 'white');
+        }
+
+        function makeComputerMove() {
+            if (!gameActive) return;
+            
+            computerThinking = true;
+            document.getElementById('game-status').textContent = 'Computer thinking...';
+            
+            setTimeout(() => {
+                // Get all valid moves for black pieces
+                const validMoves = [];
+                for (let from = 0; from < 25; from++) {
+                    const piece = board[from];
+                    if (piece && piece.color === 'black') {
+                        for (let to = 0; to < 25; to++) {
+                            if (isValidMove(from, to)) {
+                                validMoves.push({ from, to });
+                            }
+                        }
+                    }
+                }
+
+                if (validMoves.length === 0) {
+                    // No valid moves - this is checkmate or stalemate
+                    gameActive = false;
+                    if (isInCheck('black')) {
+                        // Computer is in checkmate - player wins
+                        const bonus = Math.max(50 - (totalMoves * 5), 10);
+                        score += bonus;
+                        showFeedback(`🎉 Hurray! You completed the game in ${totalMoves} moves! Bonus: +${bonus} points`, 'excellent');
+                        updateAnalysis('Congratulations! You checkmated the computer!');
+                    } else {
+                        // Stalemate
+                        showFeedback(`Game ended in stalemate after ${totalMoves} moves!`, 'neutral');
+                        updateAnalysis('The game ended in stalemate - the computer has no legal moves but is not in check.');
+                    }
+                    computerThinking = false;
+                    updateDisplay();
+                    return;
+                }
+
+                // Select a random valid move from available moves
+                const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+                const { from, to } = randomMove;
+
+                // Highlight computer move briefly
+                const fromCell = document.querySelector(`[data-index="${from}"]`);
+                const toCell = document.querySelector(`[data-index="${to}"]`);
+                fromCell.classList.add('computer-move');
+                toCell.classList.add('computer-move');
+
+                // Make the move
+                board[to] = board[from];
+                board[from] = null;
+
+                setTimeout(() => {
+                    fromCell.classList.remove('computer-move');
+                    toCell.classList.remove('computer-move');
+                }, 2000);
+
+                computerThinking = false;
+                currentPlayer = 'white';
+                
+                // Check if player is now in checkmate or check
+                if (isCheckmate('white')) {
+                    gameActive = false;
+                    showFeedback(`❌ Computer won after ${totalMoves} moves! You are in checkmate!`, 'poor');
+                    updateAnalysis('You were checkmated by the computer. Try a different strategy next time.');
+                } else if (isInCheck('white')) {
+                    showFeedback('⚠️ You are in check! You must get out of check.', 'neutral');
+                    updateAnalysis('You are in check! You must move your king to safety, block the attack, or capture the attacking piece.');
+                } else {
+                    updateAnalysis('Computer made its move. Continue with your plan!');
+                }
+                
+                updateDisplay();
+            }, 1000);
+        }
+
+        function showHint() {
+            if (!gameActive) return;
+            
+            const playerMoveCount = Math.floor(totalMoves / 2);
+            const hint = currentPuzzle.solution[playerMoveCount];
+            if (hint) {
+                const fromCell = document.querySelector(`[data-index="${hint.from}"]`);
+                const toCell = document.querySelector(`[data-index="${hint.to}"]`);
+                
+                fromCell.classList.add('best-move');
+                toCell.classList.add('best-move');
+                
+                showFeedback(`💡 Hint: Move from position ${hint.from} to ${hint.to}`, 'neutral');
+                
+                setTimeout(() => {
+                    fromCell.classList.remove('best-move');
+                    toCell.classList.remove('best-move');
+                }, 3000);
+            } else {
+                showFeedback('💡 No more hints available for this puzzle!', 'neutral');
+            }
+        }
+
+        function undoMove() {
+            if (moveHistory.length === 0 || !gameActive) return;
+            
+            const lastMove = moveHistory.pop();
+            
+            // Restore the move
+            board[lastMove.from] = board[lastMove.to];
+            if (lastMove.captured) {
+                board[lastMove.to] = {
+                    color: 'black',
+                    type: lastMove.captured,
+                    image: pieces.black[lastMove.captured]
+                };
+            } else {
+                board[lastMove.to] = null;
+            }
+            
+            // Update game state
+            score -= lastMove.points;
+            totalMoves = Math.max(0, totalMoves - 1);
+            
+            selectedPiece = null;
+            clearHighlights();
+            updateDisplay();
+            updateMoveHistory();
+            updateAnalysis('Move undone. Try a different approach!');
+            showFeedback('Move undone!', 'neutral');
+        }
+
+        function highlightPossibleMoves(from) {
+            clearHighlights();
+            
+            for (let to = 0; to < 25; to++) {
+                if (isValidMove(from, to)) {
+                    const cell = document.querySelector(`[data-index="${to}"]`);
+                    cell.classList.add('possible-move');
+                }
+            }
+        }
+
+        function clearHighlights() {
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.classList.remove('selected', 'possible-move', 'best-move', 'computer-move');
+            });
+        }
+
+        function updateDisplay() {
+            // Update board
+            for (let i = 0; i < 25; i++) {
+                const cell = document.querySelector(`[data-index="${i}"]`);
+                const piece = board[i];
+                
+                cell.innerHTML = '';
+                
+                if (piece) {
+                    const img = document.createElement('img');
+                    img.src = piece.image;
+                    img.alt = `${piece.color} ${piece.type}`;
+                    cell.appendChild(img);
+                }
+                
+                if (selectedPiece === i) {
+                    cell.classList.add('selected');
+                }
+            }
+
+            // Update UI
+            document.getElementById('score').textContent = score;
+            document.getElementById('total-moves').textContent = totalMoves;
+            document.getElementById('game-status').textContent = 
+                gameActive ? (computerThinking ? 'Computer thinking...' : 'Your Turn') : 'Game Over';
+        }
+
+        function updateMoveHistory() {
+            const moveList = document.getElementById('move-list');
+            moveList.innerHTML = '';
+            
+            moveHistory.forEach((move, index) => {
+                const moveDiv = document.createElement('div');
+                moveDiv.className = `move-entry ${move.quality}`;
+                
+                const moveText = `${index + 1}. ${move.piece}${move.captured ? 'x' + move.captured : ''} (${move.from}→${move.to})`;
+                const scoreSpan = document.createElement('span');
+                scoreSpan.className = `move-score score-${move.points}`;
+                scoreSpan.textContent = `+${move.points}`;
+                
+                moveDiv.innerHTML = `<span>${moveText}</span>`;
+                moveDiv.appendChild(scoreSpan);
+                moveList.appendChild(moveDiv);
+            });
+        }
+
+        function updateAnalysis(text) {
+            document.getElementById('analysis-text').textContent = text;
+        }
+
+        function showAnalysis() {
+            const modal = document.getElementById('analysisModal');
+            const detailedAnalysis = document.getElementById('detailed-analysis');
+            
+            let analysisHTML = '<h3>Move-by-Move Analysis</h3>';
+            
+            if (moveHistory.length === 0) {
+                analysisHTML += '<p>No moves made yet. Start playing to see detailed analysis!</p>';
+            } else {
+                moveHistory.forEach((move, index) => {
+                    analysisHTML += `
+                        <div style="margin-bottom: 20px; padding: 15px; border-left: 4px solid ${
+                            move.quality === 'excellent' ? '#4CAF50' : 
+                            move.quality === 'good' ? '#FF9800' : '#F44336'
+                        }; background: #f9f9f9;">
+                            <h4>Move ${index + 1}: ${move.piece} (${move.from}→${move.to}) - ${move.points} points</h4>
+                            <p><strong>Quality:</strong> ${move.quality.charAt(0).toUpperCase() + move.quality.slice(1)}</p>
+                            <p><strong>Analysis:</strong> ${move.analysis}</p>
+                            ${move.captured ? `<p><strong>Captured:</strong> ${move.captured}</p>` : ''}
+                        </div>
+                    `;
+                });
+                
+                analysisHTML += `
+                    <div style="margin-top: 20px; padding: 15px; background: #e3f2fd; border-radius: 8px;">
+                        <h4>Optimal Solution:</h4>
+                        <ol>
+                `;
+                
+                currentPuzzle.solution.forEach((step, index) => {
+                    analysisHTML += `<li>Move from ${step.from} to ${step.to}: ${step.evaluation}</li>`;
+                });
+                
+                analysisHTML += '</ol></div>';
+            }
+            
+            detailedAnalysis.innerHTML = analysisHTML;
+            modal.style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('analysisModal').style.display = 'none';
+        }
+
+        function showFeedback(message, type) {
+            const feedback = document.getElementById('feedback');
+            feedback.textContent = message;
+            feedback.className = `feedback ${type}`;
+        }
+
+        // Initialize game when page loads
+        initGame();
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('analysisModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
